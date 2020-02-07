@@ -120,7 +120,7 @@ def main():
     log.add_argument("--loglevel", dest="loglevel", default="INFO",
                      choices=["DEBUG", "ERROR", "INFO", "WARN"],
                      type=str, help="logging level [INFO]")
-    parser.add_argument("--conf", "-c", type=argparse.FileType("r"),
+    parser.add_argument("--conf", "-c", type=str,
                         default=CONFIGURATION_FILE,
                         help="configuration file [%s]" % CONFIGURATION_FILE)
     parser.add_argument("--dbfile", "-d", type=str,
@@ -140,9 +140,10 @@ def main():
 
     # Read the configuration file
     try:
-        settings = json.loads(options.conf.read())
+        with open(options.conf, "r") as conf_file:
+            settings = json.loads(conf_file.read())
     except Exception as exc:
-        logging.error("Unable to read configuration file '%s': %s", options.conf.name, exc)
+        logging.error("Unable to read configuration file '%s': %s", options.conf, exc)
         return 1
     dbfile = options.dbfile if options.dbfile else settings['daemon']['dbname']
 
