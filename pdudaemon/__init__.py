@@ -108,6 +108,21 @@ class TasksDB(object):
         return row
 
 
+def parse_extra_args(extra_args):
+    extra_config = dict()
+    while extra_args:
+        opt = extra_args.pop(0)
+        if not opt.startswith('--'):
+            raise Exception("Failed to parse {}".format(opt))
+        if '=' in opt:
+            opt, val = opt.split('=', 1)
+        else:
+            val = extra_args.pop(0)
+        opt = opt[2:].replace('-', '_')
+        extra_config[opt] = val
+    return extra_config
+
+
 def main():
     # Setup the parser
     parser = argparse.ArgumentParser()
@@ -136,7 +151,7 @@ def main():
     drive.add_argument("--port", dest="driveport", action="store", type=int)
 
     # Parse the command line
-    options = parser.parse_args()
+    options, extra_args = parser.parse_known_args()
 
     # Read the configuration file
     try:
@@ -168,6 +183,8 @@ def main():
             logging.error("No config section for hostname: {}".format(options.drivehostname))
             sys.exit(1)
 
+        config.update(parse_extra_args(extra_args))
+
         task_queue = Queue()
         runner = PDURunner(config, options.drivehostname, task_queue, options.driveretries)
         if options.driverequest == "reboot":
@@ -178,6 +195,8 @@ def main():
         # currently the drivers dont all reply with a result, so just exit(0) for now
         sys.exit(0)
 
+    if extra_args:
+        raise Exception("Additional arguments not supported in daemon mode")
     logger.info('PDUDaemon starting up')
 
     # Context
