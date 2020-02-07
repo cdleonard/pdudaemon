@@ -123,6 +123,15 @@ def parse_extra_args(extra_args):
     return extra_config
 
 
+def main_direct_drive(options, extra_args):
+    setup_logging(options, {})
+    driver_class = PDUDriver.select(options.direct_drive)
+    driver_config = parse_extra_args(extra_args)
+    driver = driver_class(options.drivehostname or '', driver_config)
+    logger.info('Initialized driver: %r', driver)
+    driver.handle(options.driverequest, options.driveport)
+
+
 def main():
     # Setup the parser
     parser = argparse.ArgumentParser()
@@ -146,12 +155,18 @@ def main():
     conflict.add_argument("--hostname", dest="drivehostname", action="store", type=str)
     drive = parser.add_argument_group("drive")
     drive.add_argument("--drive", action="store_true", default=False)
+    drive.add_argument("--direct-drive", type=str,
+            help="Driver for a direct (config-less) request."
+            " In this mode extra arguments are accepted and passed directly to the driver")
     drive.add_argument("--request", dest="driverequest", action="store", type=str)
     drive.add_argument("--retries", dest="driveretries", action="store", type=int, default=5)
     drive.add_argument("--port", dest="driveport", action="store", type=int)
 
     # Parse the command line
     options, extra_args = parser.parse_known_args()
+
+    if options.direct_drive:
+        return main_direct_drive(options, extra_args)
 
     # Read the configuration file
     try:
