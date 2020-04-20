@@ -103,7 +103,19 @@ $ pdudaemon --direct-drive devantech_USB-RLY08B --port 3 --device=/dev/ttyACM0 -
 In drive modes driver configuration is parsed from additional --key=value pairs on the command line.
 
 ## Adding drivers
-PDUDaemon was written to accept "plugin" style driver files. There's no official example yet, so take a look in the [drivers](https://github.com/pdudaemon/pdudaemon/tree/master/pdudaemon/drivers) directory and see if you can adapt one.
+Drivers are implemented children of the "PDUDriver" class and many example
+implementations can be found inside the
+[drivers](https://github.com/pdudaemon/pdudaemon/tree/master/pdudaemon/drivers)
+directory.
+
+External implementation of PDUDriver can also be registered using the python
+entry_points mechanism. For example add the following to your setup.cfg:
+```
+[options.entry_points]
+pdudaemon.driver =
+    mypdu = mypdumod:MyPDUClass
+```
+
 ## Why can't PDUDaemon do $REQUIREMENT?
 Patches welcome, as long as it keeps the system simple and lightweight.
 ## Contact
