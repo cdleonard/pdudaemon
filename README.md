@@ -94,6 +94,14 @@ Configure the PDU in the config file as usual, then launch pdudaemon with the fo
 $ pdudaemon --conf=share/pdudaemon.conf --drive --hostname pdu01 --port 1 --request reboot
 ```
 
+- **Direct drive mode (config-less)**
+You can also use pdudaemon drivers directly (without a config file). This can be useful for testing or if you have a single board on your desk.
+```
+$ pdudaemon --direct-drive devantech_USB-RLY08B --port 3 --device=/dev/ttyACM0 --request=on
+```
+
+In drive modes driver configuration is parsed from additional --key=value pairs on the command line.
+
 ## Adding drivers
 PDUDaemon was written to accept "plugin" style driver files. There's no official example yet, so take a look in the [drivers](https://github.com/pdudaemon/pdudaemon/tree/master/pdudaemon/drivers) directory and see if you can adapt one.
 ## Why can't PDUDaemon do $REQUIREMENT?

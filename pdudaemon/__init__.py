@@ -108,6 +108,30 @@ class TasksDB(object):
         return row
 
 
+def parse_extra_args(extra_args):
+    extra_config = dict()
+    while extra_args:
+        opt = extra_args.pop(0)
+        if not opt.startswith('--'):
+            raise Exception("Failed to parse {}".format(opt))
+        if '=' in opt:
+            opt, val = opt.split('=', 1)
+        else:
+            val = extra_args.pop(0)
+        opt = opt[2:].replace('-', '_')
+        extra_config[opt] = val
+    return extra_config
+
+
+def main_direct_drive(options, extra_args):
+    setup_logging(options, {})
+    driver_class = PDUDriver.select(options.direct_drive)
+    driver_config = parse_extra_args(extra_args)
+    driver = driver_class(options.drivehostname or '', driver_config)
+    logger.info('Initialized driver: %r', driver)
+    driver.handle(options.driverequest, options.driveport)
+
+
 def main():
     # Setup the parser
     parser = argparse.ArgumentParser()
@@ -120,7 +144,7 @@ def main():
     log.add_argument("--loglevel", dest="loglevel", default="INFO",
                      choices=["DEBUG", "ERROR", "INFO", "WARN"],
                      type=str, help="logging level [INFO]")
-    parser.add_argument("--conf", "-c", type=argparse.FileType("r"),
+    parser.add_argument("--conf", "-c", type=str,
                         default=CONFIGURATION_FILE,
                         help="configuration file [%s]" % CONFIGURATION_FILE)
     parser.add_argument("--dbfile", "-d", type=str,
@@ -131,18 +155,25 @@ def main():
     conflict.add_argument("--hostname", dest="drivehostname", action="store", type=str)
     drive = parser.add_argument_group("drive")
     drive.add_argument("--drive", action="store_true", default=False)
+    drive.add_argument("--direct-drive", type=str,
+            help="Driver for a direct (config-less) request."
+            " In this mode extra arguments are accepted and passed directly to the driver")
     drive.add_argument("--request", dest="driverequest", action="store", type=str)
     drive.add_argument("--retries", dest="driveretries", action="store", type=int, default=5)
     drive.add_argument("--port", dest="driveport", action="store", type=int)
 
     # Parse the command line
-    options = parser.parse_args()
+    options, extra_args = parser.parse_known_args()
+
+    if options.direct_drive:
+        return main_direct_drive(options, extra_args)
 
     # Read the configuration file
     try:
-        settings = json.loads(options.conf.read())
+        with open(options.conf, "r") as conf_file:
+            settings = json.loads(conf_file.read())
     except Exception as exc:
-        logging.error("Unable to read configuration file '%s': %s", options.conf.name, exc)
+        logging.error("Unable to read configuration file '%s': %s", options.conf, exc)
         return 1
     dbfile = options.dbfile if options.dbfile else settings['daemon']['dbname']
 
@@ -167,6 +198,8 @@ def main():
             logging.error("No config section for hostname: {}".format(options.drivehostname))
             sys.exit(1)
 
+        config.update(parse_extra_args(extra_args))
+
         task_queue = Queue()
         runner = PDURunner(config, options.drivehostname, task_queue, options.driveretries)
         if options.driverequest == "reboot":
@@ -177,6 +210,8 @@ def main():
         # currently the drivers dont all reply with a result, so just exit(0) for now
         sys.exit(0)
 
+    if extra_args:
+        raise Exception("Additional arguments not supported in daemon mode")
     logger.info('PDUDaemon starting up')
 
     # Context
